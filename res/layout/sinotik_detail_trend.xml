@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+    <com.saray.sinotk.widget.TrendView
+        android:id="@+id/detail_trendview"
+        android:layout_width="fill_parent"
+        android:layout_height="226dp" />
+
+    <TextView
+        android:id="@+id/text_detail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:layout_marginRight="20dp"
+        android:text="202"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/text_detail_unit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:layout_marginRight="20dp"
+        android:text="ug/m³" />
+    
+    <LinearLayout
+        android:layout_marginTop="30dp"
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="vertical" >
+	
+	    <TextView
+	        android:id="@+id/time"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:layout_gravity="right"
+	        android:layout_marginRight="20dp"
+	        android:text="11月19日 12:00" />
+	    
+	    <View
+	        android:layout_marginTop="10dp"
+			android:layout_width="150dp"
+			android:layout_height="1sp"
+			android:layout_gravity="right"
+	        android:layout_marginRight="20dp"
+			android:background="@color/white" />
+	    
+	    <TextView
+	        android:layout_marginTop="10dp"
+            android:id="@+id/quality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+	        android:layout_marginRight="20dp"
+            android:text="室外空气质量优" />
+    </LinearLayout>
+
+</LinearLayout>

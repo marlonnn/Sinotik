@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+    <ScrollView
+	    android:id="@+id/scrollView1"
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content" >
+        
+
+	    <TextView
+	        android:id="@+id/textView1"
+	        android:layout_width="wrap_content"
+	        android:layout_height="match_parent"
+	        android:text="    上海欣塑新材料科技有限公司主要从事商业、工业楼宇及其它公共建筑物室内空气质量改善及测试服务，为客户提供完整的空气净化方案。公司注册地及办公地点在上海浦东张江高科技园区，在北京设有分支机构。在整体解决方案、产品、测试和验证等服务领域不断改进、力臻完美，为用户提供高品质的工作和生活空气环境；为更好地服务客户，公司设立市场部、销售部、技术部、运营支持部及测试服务部。\n    I、我们的产品及服务主要包括：\n    
+	        （1） 物理过滤器：主要通过物理方式过滤空气中颗粒污染物及气体污染物，如PM2.5, PM10，通过制造过程使滤材自带静电，从而提高吸附效率，在该领域我们是3M公司授权经销商。\n    
+	        （2） 化学过滤器：主要处理酸性气体，有毒气体，恶臭气体，中高沸点有机物等，典型气体如二氧化硫，硫化氢，氮氧化物，苯，甲苯，二甲苯等，代理的品牌有科德宝。\n    
+	        （3）  测试仪器及测试服务：依靠完善及齐全的测试设备及技术水平，我们可为客户提供室内环境测试及咨询服务，客户可凭借这些测试数据及分析结果评估其环境空气质量及过滤系统的性能，从而为过滤系统优化提供决策依据。上海欣塑是赛默飞世尔（Thermo Fisher）颗粒物检测仪的授权经销商及合作伙伴。\n    
+	        （4） 成套设备：空气防腐蚀系统、空气净化系统、化学过滤功能段。\n    
+	        a. 过滤器性能指标：效率、 阻力、使用寿命、 容尘量\n    
+	        b. 室内空气质量检验：PM2.5、PM10、TVOC 浓度\n    
+	        c. 数据中心机房空气环境检测：洁净度、气体污染等级\n    
+	        II、我们这些产品及服务主要应用在：\n    
+	        （1） 中央空调供风系统过滤：净化室过滤系统、商用楼宇空调系统(BES)\n    
+	        （2） 大型机房通风、过滤及精密空调系统\n    
+	        （3） 家用电器及办公设备：空调、移动空调、除湿机、空气净化机、投影仪、复印机\n    
+	        （4） 通讯及电子设备\n    
+	        （5） 医用及劳保\n    
+	        （6） 汽车空调过滤器\n    
+	        （7） 特种交通工具空调系统(HVAC)\n	    
+	        III、典型案例\n    
+	        （1） 希尔顿酒店和度假村\n    
+	        （2） 朗诗\n    
+	        （3） 国家图书馆\n    
+	        （4） 英特尔\n
+				
+	        "
+	        android:textAppearance="?android:attr/textAppearanceMedium" />
+    </ScrollView>
+
+</LinearLayout>

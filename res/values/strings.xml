@@ -4,5 +4,9 @@
     <string name="app_name">Sinotik</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    
+    <!-- | 换行 -->
+	<string name="trend_shuxian_top">|\n\t</string>
+	<string name="trend_shuxian_bottom">\n\t|</string>
 
 </resources>

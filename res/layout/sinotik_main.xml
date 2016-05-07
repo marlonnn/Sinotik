@@ -1,0 +1,82 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/sinotik_bg_blue"
+    tools:context="com.saray.sinotk.MainActivity" >
+
+        <ScrollView
+	        android:id="@+id/scrollView1"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content" >
+        
+	        <LinearLayout
+	            android:layout_width="match_parent"
+	            android:layout_height="match_parent"
+	            android:orientation="vertical" >
+	            
+				<RelativeLayout
+				    android:layout_width="match_parent"
+				    android:layout_height="150dp"
+				    android:orientation="horizontal" >
+				    
+				    <TextView
+					    android:id="@+id/sinotik_aqi"
+					    android:layout_width="wrap_content"
+					    android:layout_height="wrap_content"
+					    android:layout_alignParentLeft="true"
+					    android:layout_centerVertical="true"
+					    android:layout_marginLeft="69dp"
+					    android:textSize="30sp"
+					    android:text="---"
+					    android:textColor="@color/white" />
+	
+					<TextView
+					    android:id="@+id/sinotik_gx"
+					    android:layout_width="wrap_content"
+					    android:layout_height="wrap_content"
+					    android:layout_centerHorizontal="true"
+					    android:layout_centerVertical="true"
+					    android:text="--"
+					    android:textColor="@color/white"
+					    android:textSize="40sp" />
+	
+					<TextView
+					    android:id="@+id/sinotik_quality"
+					    android:layout_width="wrap_content"
+					    android:layout_height="wrap_content"
+					    android:layout_alignParentRight="true"
+					    android:layout_centerVertical="true"
+					    android:layout_marginRight="69dp"
+					    android:text="---"
+					    android:textColor="@color/white"
+					    android:textSize="30sp" />
+				
+				</RelativeLayout>
+				
+				<include
+				    android:layout_width="fill_parent"
+				    android:layout_height="wrap_content"
+				    layout="@layout/sinotik_trend_button"/>
+				
+				<RelativeLayout
+				    android:id="@+id/chartview"
+				    android:layout_width="match_parent"
+				    android:layout_height="400dp" >
+				
+				</RelativeLayout>
+	
+				<RelativeLayout
+				    android:layout_width="match_parent"
+				    android:layout_height="200dp" >
+					<com.amap.api.maps2d.MapView
+			        	android:id="@+id/map"
+				        android:layout_width="fill_parent"
+				        android:layout_height="200dp" />
+				</RelativeLayout>
+	
+	        </LinearLayout>
+        </ScrollView>
+
+</LinearLayout>

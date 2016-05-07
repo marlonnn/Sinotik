@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="45dp"
+    android:background="@color/gray"
+    android:gravity="center">
+    <LinearLayout
+        android:id="@+id/sinotik_setting_titlebar_letfll"
+	    android:layout_width="80dp"
+	    android:layout_height="wrap_content"
+	    android:layout_centerHorizontal="true"
+	    android:layout_centerVertical="true"
+	    android:layout_alignParentLeft="true"
+        android:layout_marginLeft="16dp"
+	    android:gravity="left"
+	    android:orientation="horizontal" >
+
+	     <ImageView
+	        android:id="@+id/sinotik_setting_titlebar_left"
+	        android:layout_width="20dp"
+	        android:layout_height="20dp"
+	        android:src="@drawable/icon_editlocation_mdpi" />
+     </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:orientation="horizontal" >
+        </LinearLayout>
+        
+        <LinearLayout
+            android:id="@+id/sinotik_setting_titlebar_rightll"
+		    android:layout_width="80dp"
+		    android:layout_height="wrap_content"
+		    android:layout_centerHorizontal="true"
+		    android:layout_centerVertical="true"
+	        android:layout_alignParentRight="true"
+	        android:layout_marginRight="16dp"
+		    android:gravity="right"
+		    android:orientation="horizontal" >
+	     </LinearLayout>
+
+</RelativeLayout>

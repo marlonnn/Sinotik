@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="45dp"
+    android:background="@color/gray"
+    android:gravity="center">
+
+     <ImageView
+        android:id="@+id/sinotik_titlebar_left"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="16dp"
+        android:src="@drawable/icon_back_mdpi" /> 
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:orientation="horizontal" >
+
+            <TextView
+                android:id="@+id/sinotik_titlebar_middleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="设置区域"
+                android:textColor="@color/white" />
+        </LinearLayout>
+        
+     <ImageView
+        android:id="@+id/sinotik_titlebar_right"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="16dp"
+        android:src="@drawable/icon_more_mdpi" />
+
+</RelativeLayout>
