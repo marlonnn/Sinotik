@@ -242,9 +242,9 @@ public class DataUtil {
 					String password = jsonObject.getString("password");
 					String dataCenterId = jsonObject.getString("datacenterid");
 					String name = jsonObject.getString("name");
-					user.setUserName(userName);
+					user.setName(userName);
 					user.setPassword(password);
-					user.setDataCenterId(dataCenterId);
+					user.setDatacenterid(dataCenterId);
 					user.setName(name);
 					StoreUser(user);
 					Log.i(TAG,"-----StoreUser------");

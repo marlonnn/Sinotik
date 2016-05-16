@@ -1,8 +1,12 @@
 package com.saray.sinotk;
 
+import java.util.HashMap;
 import java.util.List;
 
-import android.app.Activity;
+import org.apache.http.NameValuePair;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
@@ -19,6 +23,7 @@ import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -35,20 +40,38 @@ import com.amap.api.maps2d.LocationSource;
 import com.amap.api.maps2d.MapView;
 import com.amap.api.maps2d.model.BitmapDescriptorFactory;
 import com.amap.api.maps2d.model.MyLocationStyle;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.saray.sinotik.cache.DataCache;
 import com.saray.sinotik.commons.Constants;
+import com.saray.sinotik.config.Config;
 import com.saray.sinotik.dialog.ProgressDialog;
 import com.saray.sinotk.adapter.QualityAdapter;
-import com.saray.sinotk.entity.EntityData;
+import com.saray.sinotk.entity.InnerStationData;
+import com.saray.sinotk.entity.OutStation;
+import com.saray.sinotk.entity.OutStationData;
 import com.saray.sinotk.util.CustomTitleBar;
 import com.saray.sinotk.util.DataUtil;
+import com.saray.sinotk.util.GXData;
+import com.saray.sinotk.util.GXUtil;
 import com.saray.sinotk.util.NetworkUtil;
+import com.saray.sinotk.util.UrlUtil;
 import com.saray.sinotk.util.WriteToSD;
+import com.saray.sinotk.util.GXData.GX;
 import com.saray.sinotk.widget.ChartView;
-//import com.amap.api.location.LocationManagerProxy;
-//import com.amap.api.location.LocationProviderProxy;
+import com.summer.activity.BaseActivity;
+import com.summer.dialog.CustomProgressDialog;
+import com.summer.factory.ThreadPoolFactory;
+import com.summer.handler.InfoHandler;
+import com.summer.handler.InfoHandler.InfoReceiver;
+import com.summer.json.Entity;
+import com.summer.logger.XLog;
+import com.summer.task.HttpBaseTask;
+import com.summer.treadpool.ThreadPoolConst;
+import com.summer.utils.JsonUtil;
+import com.summer.utils.ToastUtil;
 
-
-public class MainActivity extends Activity implements OnItemClickListener,AMapLocationListener, LocationSource{
+public class MainActivity extends BaseActivity implements OnClickListener, OnItemClickListener,AMapLocationListener, LocationSource{
 	
 	private static final String TAG = "main";
 	
@@ -69,8 +92,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 	private TextView quality;
 	private ProgressDialog mProgressDialog;
 	
-	private List<EntityData> dataEntityList;
-	
 	private RelativeLayout chartView;
 	private ChartView chartViewBar;
 	
@@ -80,15 +101,28 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 	private OnLocationChangedListener mListener;
 	private AMapLocationClient mlocationClient;
 	private AMapLocationClientOption mLocationOption;
+
+	private InfoReceiver infoReceiver;
 	
 	public static boolean IsMachine = false;
-
+	
+	private Gson gson;
+	
+	private List<OutStation> stationList;
+	
+	private int currentPosion = 0;
+	
+	private TextView name, stationName;
+	
+	private ImageButton previous, next;
+	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         new WriteToSD(this);//将城市列表数据库写入到SD卡
         customTitleBar = new CustomTitleBar(this);
         customTitleBar.SetLocation("---");
+        gson = new Gson();
         titleBarLinearlayout = (LinearLayout) this.findViewById(R.id.sinotik_titlebar_linearlayout);
         
         aqi = (TextView)this.findViewById(R.id.sinotik_aqi);
@@ -97,10 +131,15 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
         
         chartView = (RelativeLayout)findViewById(R.id.chartview);
 		chartViewBar = new ChartView();
-        
+		
+		previous = (ImageButton)findViewById(R.id.previous);
+		next = (ImageButton)findViewById(R.id.next);
+		previous.setOnClickListener(this);
+		next.setOnClickListener(this);
+		name = (TextView)findViewById(R.id.name);
+		stationName = (TextView)findViewById(R.id.stationName);
         if(NetworkUtil.isNetworkAvailable(getApplicationContext()))
         {
-//        	initAmapConfig();
     		mapView = (MapView) findViewById(R.id.map);
     		mapView.onCreate(savedInstanceState);// 此方法必须重写
     		init();
@@ -116,21 +155,11 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 			@Override
 			public void onClick(View v) {
 				// 注意更换定位时间后，需要先将定位请求删除，再进行定位请求
-//				mLocationManagerProxy.removeUpdates(MainActivity.this);
-//				mLocationManagerProxy.requestLocationData(
-//						LocationProviderProxy.AMapNetwork, -1, 15, MainActivity.this);
-//				mLocationManagerProxy.setGpsEnable(false);
 				Log.i(TAG, "----------txtLocation click------------");
 			}
 		});
         
         dataUtil = new DataUtil(this);
-        if(!dataUtil.isFirstIntall())
-        {
-        	updateIndexChartView(false);
-        }
-		
-//		initializeTrendButton(null);
 		initializeButton();
 		
 
@@ -142,25 +171,14 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 				btnPerWeek.setBackgroundColor(darkGray);
 				btnPerday.setBackground(MainActivity.this.getResources().getDrawable(R.drawable.gridview_sel));
 				btnPermounth.setBackgroundColor(darkGray);
-				ChartView chartViewBar = new ChartView();
-				final List<EntityData> dataList = dataUtil.GetJsonDataFromSharedPreferences();
-				Log.i(TAG, "---------dataList.size()-----" + dataList.size());
-				if(dataList !=null && dataList.size() > 0)
+				if(IsMachine)
 				{
-					chartView.removeAllViews();
-					if(dataList.size() <= 7)
-					{
-						chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-								dataList, 0x01));
-					}
-					else
-					{
-						chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-								dataList, 0x03));
-					}
-
+					sendInnerStationRequest(cityCode);
 				}
-
+				else
+				{
+					sendOutStationRequest(cityCode, DataCache.getInstance().getOutStation().get(currentPosion).getStationName(), "1");
+				}
 			}
 		});
 		
@@ -171,25 +189,14 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 				btnPerWeek.setBackground(MainActivity.this.getResources().getDrawable(R.drawable.gridview_sel));
 				btnPerday.setBackgroundColor(darkGray);
 				btnPermounth.setBackgroundColor(darkGray);
-				ChartView chartViewBar = new ChartView();
-				final List<EntityData> dataList = dataUtil.GetJsonDataFromSharedPreferences();
-				Log.i(TAG, "---------dataList.size()-----" + dataList.size());
-				if(dataList !=null && dataList.size() > 0)
+				if(IsMachine)
 				{
-					chartView.removeAllViews();
-					if(dataList.size() <= 7)
-					{
-						chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-								dataList, 0x01));
-					}
-					else
-					{
-						chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-								dataList, 0x02));
-					}
+					sendInnerStationRequest(cityCode);
 				}
-
-				
+				else
+				{
+					sendOutStationRequest(cityCode, DataCache.getInstance().getOutStation().get(currentPosion).getStationName(), "7");
+				}
 			}
 		});
 		
@@ -200,18 +207,57 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 				btnPerWeek.setBackgroundColor(darkGray);
 				btnPerday.setBackgroundColor(darkGray);
 				btnPermounth.setBackground(MainActivity.this.getResources().getDrawable(R.drawable.gridview_sel));
-				ChartView chartViewBar = new ChartView();
-				final List<EntityData> dataList = dataUtil.GetJsonDataFromSharedPreferences();
-				Log.i(TAG, "---------dataList.size()-----" + dataList.size());
-				if(dataList !=null && dataList.size() > 0)
+				if(IsMachine)
 				{
-					chartView.removeAllViews();
-					chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-							dataList, 0x01));
+					sendInnerStationRequest(cityCode);
 				}
-
+				else
+				{
+					sendOutStationRequest(cityCode, DataCache.getInstance().getOutStation().get(currentPosion).getStationName(), "30");
+				}
 			}
 		});
+		
+		infoReceiver = new InfoReceiver() {
+			
+			@Override
+			public void onNotifyText(String notify) {
+				
+			}
+			
+			@Override
+			public void onInfoReceived(int errorCode, HashMap<String, Object> items) {
+				RemoveProgressDialog();
+		        if (errorCode == 0)
+		        {
+		            XLog.i(errorCode);
+		            XLog.i("items : " + items.toString());
+		            String jsonString = (String) items.get("content");
+		            if (jsonString != null)
+		            {
+		                JSONObject object;
+		                try {
+		                    object = new JSONObject(jsonString);
+		                    String msg = object.optString("message");
+		                    int code = object.optInt("code", -1);
+		                    int taskType = (Integer) items.get("taskType");
+		                    if (code == 200)
+		                    {
+		                        RequestSuccessful(jsonString, taskType);
+		                    }
+		                    else
+		                    {
+		                        RequestFailed(code, msg, taskType);
+		                    }
+		                } catch (JSONException e) {
+		                    XLog.e(e);
+		                    e.printStackTrace();
+		                    RequestFailed(-1, "Json Parse Error", -1);
+		                }
+		            }
+		        }
+			}
+		};
     }
     
 	/**
@@ -265,22 +311,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
     	builder.create().show();
     }
     
-//    //初始化高德地图
-//    private void initAmapConfig()
-//    {
-//		// 初始化定位，只采用网络定位
-//		mLocationManagerProxy = LocationManagerProxy.getInstance(this);
-//		mLocationManagerProxy.setGpsEnable(false);
-//		// 此方法为每隔固定时间会发起一次定位请求，为了减少电量消耗或网络流量消耗，
-//		// 注意设置合适的定位时间的间隔（最小间隔支持为2000ms），并且在合适时间调用removeUpdates()方法来取消定位请求
-//		// 在定位结束后，在合适的生命周期调用destroy()方法
-//		// 其中如果间隔时间为-1，则定位只定一次,
-//		//在单次定位情况下，定位无论成功与否，都无需调用removeUpdates()方法移除请求，定位sdk内部会移除
-//		mLocationManagerProxy.requestLocationData(
-//				LocationProviderProxy.AMapNetwork, -1, 15, this);
-//		Log.i(TAG, "---------initAmapConfig-----------");
-//    }
-    
     //显示进度条
     private void showProgressBar()
     {
@@ -298,15 +328,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 
     }
     
-    //取消显示进度条
-    private void cancelProgressBar()
-    {
-    	if(mProgressDialog != null)
-    	{
-    		mProgressDialog.dismiss();
-    	}
-    }
-    
     //主处理消息handler
     Handler mHandler = new Handler(){
         public void handleMessage(Message msg) {   
@@ -320,8 +341,8 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 			case 1:
 				//数据下载成功,显示界面
 				Log.i(TAG, "-----mHandler 1-------");
-				cancelProgressBar();
-				updateIndexChartView(true);
+//				cancelProgressBar();
+//				updateIndexChartView(true);
 				initializeButton();
 				break;
 			case 2:
@@ -375,101 +396,95 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
     }
     
     //更新空气指数和图表
-    private void updateIndexChartView(boolean flag)
+    private void updateIndexChartViewByOuter()
     {
-    	chartView.removeAllViews();
-    	if(flag)
+    	GXData gxData = new GXData(this);
+    	if(DataCache.getInstance().getOutData() != null && DataCache.getInstance().getOutData().size() > 0)
     	{
-    		//第一次
-        	Log.i(TAG, "---------dataUtil.entityDataList.size()-----" +dataUtil.entityDataList.size());
-        	if(dataUtil.entityDataList != null && dataUtil.entityDataList.size() > 0)
-        	{
-        		dataEntityList = dataUtil.entityDataList;
-        		String aqiText = dataEntityList.get(0).getApi();
-        		if(aqiText != null)
-        		{
-            		aqi.setText(aqiText);
-            		quality.setText(getQuality(Integer.parseInt(aqiText)));
-        		}
-        		else
-        		{
-            		aqi.setText("---");
-            		quality.setText("---");
-        		}
-        		gx.setText(dataUtil.gxData.GetGxString(dataEntityList.get(0).getGx()));
-				if(dataUtil.entityDataList.size() <= 7)
-				{
-					chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-							dataUtil.entityDataList, 0x01));
-				}
-				else
-				{
-					chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
-							dataUtil.entityDataList, 0x03));
-				}
-        	}
-        	else
-        	{
-        		//没有更多数据了
-        		aqi.setText("---");
-        		quality.setText("---");
-        		gx.setText("--");
-        		Toast.makeText(MainActivity.this,"没有更多数据了！", Toast.LENGTH_LONG).show();
-        	}
-    	}
-    	else
-    	{
-    		List<EntityData> entityDataList = dataUtil.GetJsonDataFromSharedPreferences();
-    		if(entityDataList != null && entityDataList.size() > 0)
+    		String aqiText = DataCache.getInstance().getOutData().get(0).getAqi();
+    		if(aqiText != null)
     		{
-    			String aqiText = entityDataList.get(0).getApi();
-        		if(aqiText != null)
-        		{
-            		aqi.setText(aqiText);
-            		quality.setText(getQuality(Integer.parseInt(aqiText)));
-        		}
-        		else
-        		{
-            		aqi.setText("---");
-            		quality.setText("---");
-        		}
-        		gx.setText(dataUtil.gxData.GetGxString(entityDataList.get(0).getGx()));
-        		chartView.addView(chartViewBar.execute(this.getApplicationContext(), entityDataList, 0x03));
+    			String qualityString = getQuality(aqi, quality, Integer.parseInt(aqiText));
+        		aqi.setText(aqiText);
+        		quality.setText(qualityString);
     		}
     		else
     		{
-        		//没有更多数据了
-        		Toast.makeText(MainActivity.this,"没有更多数据了！", Toast.LENGTH_LONG).show();
+        		aqi.setText("---");
+        		quality.setText("---");
     		}
+		    GX gxSo2 = GXUtil.CaculateGx("so2", DataCache.getInstance().getOutData().get(0).getSo2());
+		    GX gxNo2 = GXUtil.CaculateGx("no2", DataCache.getInstance().getOutData().get(0).getNo2());
+			GX gxValue = gxData.GetGx(gxSo2) > gxData.GetGx(gxNo2) ? gxSo2 : gxNo2;
+    		gx.setText(gxData.GetGxString(gxValue));
+    	}
+    	else
+    	{
+    		//没有更多数据了
+    		aqi.setText("---");
+    		quality.setText("---");
+    		gx.setText("--");
+    		Toast.makeText(MainActivity.this,"没有更多数据了！", Toast.LENGTH_LONG).show();
     	}
     }
     
-    private String getQuality(int aqi)
+    //更新空气指数和图表
+    private void updateIndexChartViewByInner()
+    {
+    	if (DataCache.getInstance().getInnerData() != null && DataCache.getInstance().getInnerData().size() > 0)
+    	{
+    		aqi.setText("---");
+    		quality.setText("---");
+    		gx.setText(DataCache.getInstance().getInnerData().get(0).getGxlevels());
+    	}
+    	else
+    	{
+    		//没有更多数据了
+    		aqi.setText("---");
+    		quality.setText("---");
+    		gx.setText("--");
+    		Toast.makeText(MainActivity.this,"没有更多数据了！", Toast.LENGTH_LONG).show();
+    	}
+    }
+    
+    private String getQuality(TextView txtAqi, TextView txtQuality, int aqi)
     {
     	String quality = "";
     	if(aqi >= 0 && aqi <= 50)
     	{
     		quality = "优";
+    		txtAqi.setTextColor(Color.parseColor("#00FF00"));
+    		txtQuality.setTextColor(Color.parseColor("#00FF00"));
     	}
     	else if(aqi >= 51 && aqi <= 100)
     	{
     		quality = "良";
+    		txtAqi.setTextColor(Color.parseColor("#80FF00"));
+    		txtQuality.setTextColor(Color.parseColor("#80FF00"));
     	}
     	else if(aqi >= 101 && aqi <= 150)
     	{
     		quality = "轻度污染";
+    		txtAqi.setTextColor(Color.parseColor("#FFFF00"));
+    		txtQuality.setTextColor(Color.parseColor("#FFFF00"));
     	}
     	else if(aqi >= 151 && aqi <= 200)
     	{
     		quality = "中度污染";
+    		txtAqi.setTextColor(Color.parseColor("#FF8000"));
+    		txtQuality.setTextColor(Color.parseColor("#FF8000"));
     	}
     	else if(aqi >= 201 && aqi <= 300)
     	{
     		quality = "重度污染";
+    		txtAqi.setTextColor(Color.parseColor("#FF00FF"));
+    		txtQuality.setTextColor(Color.parseColor("#FF00FF"));
     	}
     	else if(aqi >= 301)
     	{
     		quality = "严重污染";
+    		txtAqi.setTextColor(Color.parseColor("#C11E1E"));
+    		txtQuality.setTextColor(Color.parseColor("#C11E1E"));
     	}
     	return quality;
     }
@@ -520,17 +535,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 		mapView.onDestroy();
 	}
     
-//    private void removeUpdate(LocationManagerProxy mLocationManagerProxy, AMapLocationListener aMapLocationListener)
-//    {
-//    	if(mLocationManagerProxy != null)
-//    	{
-//    		//移除定位请求
-//    		mLocationManagerProxy.removeUpdates(aMapLocationListener);
-//    		// 销毁定位
-//    		mLocationManagerProxy.destroy();
-//    	}
-//    }
-    
     private void initializeButton()
     {
 		btnPerWeek = (Button)MainActivity.this.findViewById(R.id.sinotik_btnperweek);
@@ -543,11 +547,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 		btnPermounth.setBackgroundColor(darkGray);
     }
     
-	private void initializeTrendButton(List<EntityData> dataEntityList)
-	{
-
-	}
-
 	@Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -594,12 +593,14 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 					if(code.length() > 3)
 					{
 						IsMachine = false;
-						sendMessage(mHandler, Constants.FIRST_INTSALL);
+//						sendMessage(mHandler, Constants.FIRST_INTSALL);
+						sendStationListRequest(cityCode);
 					}
 					else
 					{
 						IsMachine = true;
-						sendMessage(mHandler, 5);
+//						sendMessage(mHandler, 5);
+						sendInnerStationRequest(cityCode);
 					}
 					
 				}
@@ -612,30 +613,6 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 		}
 	}
 
-//	@Override
-//	public void onLocationChanged(Location location) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//
-//	@Override
-//	public void onProviderDisabled(String provider) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//
-//	@Override
-//	public void onProviderEnabled(String provider) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//
-//	@Override
-//	public void onStatusChanged(String provider, int status, Bundle extras) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-
 	public void onLocationChanged(AMapLocation amapLocation) {
 		customTitleBar.SetLocation(amapLocation.getDistrict());
 		
@@ -647,13 +624,13 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 				Log.i(TAG, "----------location city code------------" + amapLocation.getCityCode());
 				if(cityCode != "")
 				{
-					sendMessage(mHandler, Constants.FIRST_INTSALL);			
+//					sendMessage(mHandler, Constants.FIRST_INTSALL);
+					sendStationListRequest(cityCode);
 				}
 				else
 				{
 					sendMessage(mHandler, Constants.LOCATEFAIL);
 				}
-				
 				mlocationClient.stopLocation();
 			} else {
 				String errText = "定位失败," + amapLocation.getErrorCode()+ ": " + amapLocation.getErrorInfo();
@@ -704,6 +681,206 @@ public class MainActivity extends Activity implements OnItemClickListener,AMapLo
 			mlocationClient.onDestroy();
 		}
 		mlocationClient = null;
+		
+	}
+	
+	/**
+	 * 获取所有的监测点
+	 * @param cityCode
+	 */
+    private void sendStationListRequest(String cityCode)
+    {
+    	HashMap<String, String> entity = new HashMap<String, String>();
+    	entity.put("cityCode", cityCode);
+    	List<NameValuePair> params = JsonUtil.requestForNameValuePair(entity);
+    	ShowProgressDialog("正在获取监测点数据...");
+    	addToThreadPool(Config.staion_list, "send station list request", params);
+    }
+    
+    private void sendOutStationRequest(String cityCode, String stationName, String cycle)
+    {
+    	HashMap<String, String> entity = new HashMap<String, String>();
+    	entity.put("cityCode", cityCode);
+    	entity.put("cycle", cycle);
+    	entity.put("stationname", stationName);
+    	List<NameValuePair> params = JsonUtil.requestForNameValuePair(entity);
+    	ShowProgressDialog("正在获取监测点数据...");
+    	addToThreadPool(Config.all_out_door, "send all out stationrequest", params);
+    }
+    
+    private void sendInnerStationRequest(String cityCode)
+    {
+    	HashMap<String, String> entity = new HashMap<String, String>();
+    	entity.put("userid", cityCode);
+    	List<NameValuePair> params = JsonUtil.requestForNameValuePair(entity);
+    	ShowProgressDialog("正在获取机房数据...");
+    	addToThreadPool(Config.all_inner, "send all out stationrequest", params);
+    }
+    
+    private void addToThreadPool(int taskType, String Tag, List<NameValuePair> params)
+    {
+    	HttpBaseTask httpTask = new HttpBaseTask(ThreadPoolConst.THREAD_TYPE_FILE_HTTP, Tag, params, UrlUtil.GetUrl(taskType));
+    	httpTask.setTaskType(taskType);
+    	InfoHandler handler = new InfoHandler(infoReceiver);
+    	httpTask.setInfoHandler(handler);
+    	ThreadPoolFactory.getThreadPoolManager().addTask(httpTask);
+    }
+    
+	/**
+	 * Show custom dialog progress
+	 * @param title
+	 */
+	protected void ShowProgressDialog(String title) {
+		try {
+			if (progressDialog != null) 
+			{
+				return;
+			}
+			progressDialog = CustomProgressDialog.CreateDialog(this);
+			progressDialog.setMessage(title);
+			progressDialog.setCancelable(false);
+			progressDialog.show();
+
+			progressDialog.setOnCancelListener(
+					new DialogInterface.OnCancelListener() 
+					{
+						@Override
+						public void onCancel(DialogInterface arg0) 
+						{
+							if (progressDialog != null) {
+								progressDialog.dismiss();
+								progressDialog = null;
+							}
+						}
+					});
+		} 
+		catch (Exception e) 
+		{
+			XLog.e("showProgressDialog exception: " + e.toString(), e);
+			e.printStackTrace();
+		}
+	}
+	
+	private void setViewVisiable(boolean visiable)
+	{
+		if(visiable)
+		{
+			name.setVisibility(View.VISIBLE);
+			stationName.setVisibility(View.VISIBLE);
+			previous.setVisibility(View.VISIBLE);
+			next.setVisibility(View.VISIBLE);
+		}
+		else
+		{
+			name.setVisibility(View.INVISIBLE);
+			stationName.setVisibility(View.INVISIBLE);
+			previous.setVisibility(View.INVISIBLE);
+			next.setVisibility(View.INVISIBLE);
+		}
+
+	}
+
+	@Override
+	public void RequestSuccessful(String jsonString, int taskType) {
+		XLog.i("jsonString: " + jsonString);
+		switch(taskType)
+		{
+		/**
+		 * 获取监测点列表
+		 */
+		case Config.staion_list:
+			Entity<List<OutStation>> entity = gson.fromJson(jsonString,
+					new TypeToken<Entity<List<OutStation>>>() {
+					}.getType());
+			
+			if (entity != null && entity.getData() != null)
+			{
+				setViewVisiable(true);
+				DataCache.getInstance().setOutStation(entity.getData());
+				stationList = DataCache.getInstance().getOutStation();
+				currentPosion = 0;
+				stationName.setText(stationList.get(currentPosion).getStationName());
+				sendOutStationRequest(cityCode, DataCache.getInstance().getOutStation().get(0).getStationName(), "1");
+			}
+			break;
+		/**
+		 * 室外所有监测点数据
+		 */
+		case Config.all_out_door:
+			Entity<List<OutStationData>> outStation = gson.fromJson(jsonString,
+					new TypeToken<Entity<List<OutStationData>>>() {
+					}.getType());
+			if (outStation != null && outStation.getData() != null)
+			{
+				DataCache.getInstance().setOutData(outStation.getData());
+				XLog.i("-----test---- " + DataCache.getInstance().getSelectDayData().size());
+				chartView.removeAllViews();
+				chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
+						DataCache.getInstance().getOutData()));
+				updateIndexChartViewByOuter();
+			}
+			break;
+			
+		case Config.all_inner:
+			Entity<List<InnerStationData>> innerStation = gson.fromJson(jsonString,
+					new TypeToken<Entity<List<InnerStationData>>>() {
+					}.getType());
+			if (innerStation != null && innerStation.getData() != null)
+			{
+				setViewVisiable(false);
+				DataCache.getInstance().setInnerData(innerStation.getData());
+				chartView.removeAllViews();
+				chartView.addView(chartViewBar.execute(MainActivity.this.getApplicationContext(), 
+						DataCache.getInstance().getInnerData(), true));
+				updateIndexChartViewByInner();
+			}
+			break;
+			
+		}
+	}
+
+	@Override
+	public void onClick(View v) {
+
+		switch(v.getId())
+		{
+		case R.id.previous:
+			if (stationList != null && stationList.size() >0)
+			{
+				if ( currentPosion <= stationList.size() && currentPosion > 0)
+				{
+					currentPosion --;
+					if (currentPosion < 0)
+					{
+						currentPosion = 0;
+					}
+					stationName.setText(stationList.get(currentPosion).getStationName());
+					sendOutStationRequest(cityCode, stationList.get(currentPosion).getStationName(), "1");
+				}
+				else
+				{
+					ToastUtil.show(this, "没有更多监测点了");
+				}
+			}
+			break;
+			
+		case R.id.next:
+			if (stationList != null && stationList.size() >0)
+			{
+				if ( currentPosion < stationList.size() -1)
+				{
+					currentPosion ++;
+					stationName.setText(stationList.get(currentPosion).getStationName());
+					sendOutStationRequest(cityCode, stationList.get(currentPosion).getStationName(), "1");
+				}
+				else
+				{
+					ToastUtil.show(this, "没有更多监测点了");
+				}
+			}
+
+			break;
+		}
 		
 	}
 }

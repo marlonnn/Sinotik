@@ -2,17 +2,22 @@ package com.saray.sinotk.entity;
 
 public class User {
 	
-	private String userName;
+	private String id;
+	private String username;
 	private String password;
-	private String dataCenterId;
+	private String datacenterid;
 	private String name;
-	private String email;
-	
-	public String getUserName() {
-		return userName;
+	public String getId() {
+		return id;
 	}
-	public void setUserName(String userName) {
-		this.userName = userName;
+	public void setId(String id) {
+		this.id = id;
+	}
+	public String getUsername() {
+		return username;
+	}
+	public void setUsername(String username) {
+		this.username = username;
 	}
 	public String getPassword() {
 		return password;
@@ -20,17 +25,11 @@ public class User {
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	public String getEmail() {
-		return email;
+	public String getDatacenterid() {
+		return datacenterid;
 	}
-	public void setEmail(String email) {
-		this.email = email;
-	}
-	public String getDataCenterId() {
-		return dataCenterId;
-	}
-	public void setDataCenterId(String dataCenterId) {
-		this.dataCenterId = dataCenterId;
+	public void setDatacenterid(String datacenterid) {
+		this.datacenterid = datacenterid;
 	}
 	public String getName() {
 		return name;

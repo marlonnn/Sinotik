@@ -1,6 +1,8 @@
 package com.saray.sinotk.widget;
 
-import java.math.BigDecimal;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import org.achartengine.ChartFactory;
@@ -11,6 +13,10 @@ import org.achartengine.renderer.SimpleSeriesRenderer;
 import org.achartengine.renderer.XYMultipleSeriesRenderer;
 
 import com.saray.sinotk.entity.EntityData;
+import com.saray.sinotk.entity.InnerStationData;
+import com.saray.sinotk.entity.OutStationData;
+import com.saray.sinotk.util.GXData;
+import com.saray.sinotk.util.GXUtil;
 import com.saray.sinotk.util.GXData.GX;
 
 import android.content.Context;
@@ -61,6 +67,214 @@ public class ChartView extends AbstractChart{
 		return value;
 	}
 	
+	private int GetGxValue(String gx)
+	{
+		int value = 20;
+		switch(gx)
+		{
+		case "G1":
+			value = 20;
+			break;
+		case "G2":
+			value = 40;
+			break;
+		case "G3":
+			value = 50;
+			break;
+		case "GX":
+			value = 55;
+			break;
+		}
+		return value;
+	}
+	
+	public View execute(Context context, List<InnerStationData> dataEntityList, boolean flag)
+	{
+		if (dataEntityList != null && dataEntityList.size() > 0)
+		{
+			int size = dataEntityList.size();
+			double[] minValues = new double[size];
+			double[] maxValues = new double[size];
+		    int[] colors = new int[] { Color.CYAN };
+		    XYMultipleSeriesRenderer renderer = buildBarRenderer(colors);
+		    
+		    XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+		    RangeCategorySeries series = new RangeCategorySeries("");
+		    
+		    for (int i=0; i<dataEntityList.size(); i++)
+		    {
+				minValues[i] = 1;
+				maxValues[i] = GetGxValue(dataEntityList.get(i).getGxlevels());
+				try {
+					SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设定格式 
+					Date timeDate = dateFormat.parse(dataEntityList.get(i).getTesttime());
+					
+					SimpleDateFormat timeFormatter = new SimpleDateFormat("MM/dd HH:mm");
+					String displayValue = timeFormatter.format(timeDate);
+					renderer.addXTextLabel(i, displayValue);
+
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+				series.add(minValues[i], maxValues[i]);
+		    }
+		    dataset.addSeries(series.toXYSeries());
+
+		    setChartSettings(renderer, "Data from Sinotik", "", "Gx Level", 0, size,
+			        0, 60, Color.GRAY, Color.LTGRAY);
+		    renderer.setBarSpacing(0.1);
+
+		    renderer.setXLabels(0);
+		    renderer.setXAxisMin(-1);
+		    renderer.setXLabelsAngle(-30.0f);
+		    renderer.setXAxisMax(dataEntityList.size());
+		    renderer.setXLabelsAlign(Align.CENTER);
+		    renderer.setYLabels(0);
+		    
+		    renderer.addYTextLabel(20, "G1");
+		    renderer.addYTextLabel(40, "G2");
+		    renderer.addYTextLabel(50, "G3");
+		    renderer.addYTextLabel(55, "GX");
+		    renderer.setLabelsTextSize(22);
+		    renderer.setLegendTextSize(22 * 2);
+		    renderer.setAxisTitleTextSize(22);
+		    renderer.setChartTitleTextSize(22);
+		    renderer.setMargins(new int[] {0, 50, 10, 0});
+		    renderer.setYLabelsAlign(Align.LEFT);
+		    renderer.setPanEnabled(true, false);
+		    renderer.setZoomButtonsVisible(true);
+		    renderer.setZoomEnabled(true, false);
+		    if(dataEntityList.size() > 200)
+		    {
+			    renderer.setZoomRate(3);
+		    }
+		    else if (dataEntityList.size() > 18 && dataEntityList.size() < 200)
+		    {
+		    	renderer.setZoomRate(2);
+		    }
+		    else
+		    {
+//		    	renderer.setBarWidth(28);
+		    }
+		    SimpleSeriesRenderer r = renderer.getSeriesRendererAt(0);
+		    r.setDisplayChartValues(false);
+//		    r.setChartValuesTextSize(25);
+//		    renderer.setLegendTextSize(20);
+//		    r.setChartValuesSpacing(5);
+		    r.setGradientEnabled(true);
+		    r.setGradientStart(0, Color.YELLOW);
+		    r.setGradientStop(55, Color.RED);
+		    
+		    renderer.setMarginsColor(Color.argb(0x00, 0x01, 0x01, 0x01));
+		    renderer.setApplyBackgroundColor(true);
+	        renderer.setBackgroundColor(Color.TRANSPARENT);
+		    return ChartFactory.getRangeBarChartView(context, dataset, renderer, Type.STACKED);
+		}
+		else
+		{
+			return null;
+		}
+	}
+	
+	public View execute(Context context, List<OutStationData> dataEntityList)
+	{
+		GXData gxData = new GXData(context);
+		if (dataEntityList != null && dataEntityList.size() > 0)
+		{
+			int size = dataEntityList.size();
+			double[] minValues = new double[size];
+			double[] maxValues = new double[size];
+		    int[] colors = new int[] { Color.CYAN };
+		    XYMultipleSeriesRenderer renderer = buildBarRenderer(colors);
+		    
+		    XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+		    RangeCategorySeries series = new RangeCategorySeries("");
+		    
+		    for (int i=0; i<dataEntityList.size(); i++)
+		    {
+			    GX gxSo2 = GXUtil.CaculateGx("so2", dataEntityList.get(i).getSo2());
+			    GX gxNo2 = GXUtil.CaculateGx("no2", dataEntityList.get(i).getNo2());
+				GX gx = gxData.GetGx(gxSo2) > gxData.GetGx(gxNo2) ? gxSo2 : gxNo2;
+				minValues[i] = 1.5;
+				maxValues[i] = GetGxValue(gx);
+				try {
+//					if (i % 2 == 0)
+					{
+						SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设定格式 
+						Date timeDate = dateFormat.parse(dataEntityList.get(i).getTesttime());
+						
+						SimpleDateFormat timeFormatter = new SimpleDateFormat("MM/dd HH:mm");
+						String displayValue = timeFormatter.format(timeDate);
+						renderer.addXTextLabel(i, displayValue);
+					}
+
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+				series.add(minValues[i], maxValues[i]);
+		    }
+		    dataset.addSeries(series.toXYSeries());
+
+		    setChartSettings(renderer, "Data from Sinotik", "", "Gx Level", 0, size,
+			        0, 60, Color.GRAY, Color.LTGRAY);
+		    renderer.setBarSpacing(0.1);
+
+		    renderer.setXLabels(0);
+		    renderer.setXAxisMin(-1);
+		    renderer.setXLabelsAngle(-30.0f);
+		    renderer.setXAxisMax(dataEntityList.size());
+		    renderer.setXLabelsAlign(Align.CENTER);
+		    renderer.setYLabels(0);
+		    
+		    renderer.addYTextLabel(20, "G1");
+		    renderer.addYTextLabel(40, "G2");
+		    renderer.addYTextLabel(50, "G3");
+		    renderer.addYTextLabel(55, "GX");
+		    renderer.setMargins(new int[] {0, 50, 10, 0});
+		    renderer.setLabelsTextSize(22);
+		    renderer.setLegendTextSize(22 * 2);
+		    renderer.setAxisTitleTextSize(22);
+		    renderer.setChartTitleTextSize(22);
+//		    renderer.setYLabelsPadding(10);
+//		    renderer.setXLabelsPadding(10);
+		    renderer.setYLabelsAlign(Align.LEFT);
+		    renderer.setPanEnabled(true, false);
+		    renderer.setZoomButtonsVisible(true);
+		    renderer.setZoomEnabled(true, false);
+		    renderer.setBarSpacing(0.1);
+		    if(dataEntityList.size() > 200)
+		    {
+//		    	renderer.setBarWidth(18);
+			    renderer.setZoomRate(4);
+		    }
+		    else if (dataEntityList.size() > 18 && dataEntityList.size() < 200)
+		    {
+//		    	renderer.setBarWidth(28);
+		    	renderer.setZoomRate(3);
+		    }
+		    else
+		    {
+//		    	renderer.setBarWidth(38);
+		    }
+		    SimpleSeriesRenderer r = renderer.getSeriesRendererAt(0);
+		    r.setDisplayChartValues(false);
+//		    r.setChartValuesTextSize(12);
+//		    r.setChartValuesSpacing(5);
+		    r.setGradientEnabled(true);
+		    r.setGradientStart(0, Color.YELLOW);
+		    r.setGradientStop(55, Color.RED);
+		    
+		    renderer.setMarginsColor(Color.argb(0x00, 0x01, 0x01, 0x01));
+		    renderer.setApplyBackgroundColor(true);
+	        renderer.setBackgroundColor(Color.TRANSPARENT);
+		    return ChartFactory.getRangeBarChartView(context, dataset, renderer, Type.STACKED);
+		}
+		else
+		{
+			return null;
+		}
+	}
+	
 	public View execute(Context context, List<EntityData> dataEntityList, int discount)
 	{
 		
@@ -69,6 +283,9 @@ public class ChartView extends AbstractChart{
 			int size = dataEntityList.size() / discount;
 			double[] minValues = new double[size];
 			double[] maxValues = new double[size];
+		    int[] colors = new int[] { Color.CYAN };
+		    XYMultipleSeriesRenderer renderer = buildBarRenderer(colors);
+		    
 			for(int i=0; i<size; i++)
 			{
 				minValues[i] = 0;
@@ -77,6 +294,7 @@ public class ChartView extends AbstractChart{
 //				BigDecimal b = new BigDecimal(dataEntityList.get(i).getGxValue()); 
 //				maxValues[i] = b.setScale(0, BigDecimal.ROUND_HALF_UP).doubleValue();
 				maxValues[i] = value;
+//				renderer.addXTextLabel(i, "1");
 			}
 		    XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
 		    RangeCategorySeries series = new RangeCategorySeries("GX值");
@@ -85,9 +303,8 @@ public class ChartView extends AbstractChart{
 		      series.add(minValues[k], maxValues[k]);
 		    }
 		    dataset.addSeries(series.toXYSeries());
-		    int[] colors = new int[] { Color.CYAN };
-		    XYMultipleSeriesRenderer renderer = buildBarRenderer(colors);
-		    setChartSettings(renderer, "数据来源于欣塑科技", "每天GX指数柱状图", "", 0, size + 0.5,
+
+		    setChartSettings(renderer, "数据来源于塑欣科技", "每天GX指数柱状图", "", 0, size + 0.5,
 			        0, 60, Color.GRAY, Color.LTGRAY);
 		    renderer.setBarSpacing(0.1);
 		    renderer.setXLabels(20);
@@ -104,7 +321,7 @@ public class ChartView extends AbstractChart{
 		    
 		    renderer.setMargins(new int[] {0, 0, 0, 0});
 		    renderer.setYLabelsAlign(Align.LEFT);
-		    renderer.setPanEnabled(false, false);
+		    renderer.setPanEnabled(true, false);
 		    SimpleSeriesRenderer r = renderer.getSeriesRendererAt(0);
 		    r.setDisplayChartValues(false);
 		    r.setChartValuesTextSize(12);

@@ -123,9 +123,9 @@ public class SharedPreferencesUtil {
 	{
 		Editor editor = sharedPreferences(context,className).edit();
 		try {
-			editor.putString("USER_NAME", user.getUserName());
+			editor.putString("USER_NAME", user.getName());
 			editor.putString("PASSWORD",user.getPassword());
-			editor.putString("DATA_CENTER_ID", user.getDataCenterId());
+			editor.putString("DATA_CENTER_ID", user.getDatacenterid());
 			editor.putString("NAME",user.getName());
 		} catch (NumberFormatException e) {
 			e.printStackTrace();

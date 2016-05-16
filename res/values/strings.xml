@@ -3,8 +3,13 @@
 
     <string name="app_name">Sinotik</string>
     <string name="hello_world">Hello world!</string>
+    <string name="login">登录</string>
     <string name="action_settings">Settings</string>
-    
+    <string name="login_hint_account">请输入帐号</string>
+    <string name="login_hint_password">请输入密码</string>
+    <string name="input_account">请输入帐号，限20位字母或者数字</string>
+    <string name="input_password">请输入密码，6~20位字母或者数字</string>
+    <string name="input_nickname">请输入昵称，限10位汉字、字母或者数字</string>
     <!-- | 换行 -->
 	<string name="trend_shuxian_top">|\n\t</string>
 	<string name="trend_shuxian_bottom">\n\t|</string>

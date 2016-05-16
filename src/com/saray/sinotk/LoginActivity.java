@@ -1,108 +1,88 @@
 package com.saray.sinotk;
 
-import com.saray.sinotik.dialog.ProgressDialog;
+import java.util.HashMap;
+import java.util.List;
+
+import org.apache.http.NameValuePair;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.saray.sinotik.config.Config;
 import com.saray.sinotk.R;
-import com.saray.sinotk.util.DataUtil;
+import com.saray.sinotk.entity.User;
 import com.saray.sinotk.util.NetworkUtil;
+import com.saray.sinotk.util.UrlUtil;
+import com.summer.activity.BaseActivity;
+import com.summer.factory.ThreadPoolFactory;
+import com.summer.handler.InfoHandler;
+import com.summer.handler.InfoHandler.InfoReceiver;
+import com.summer.json.Entity;
+import com.summer.logger.XLog;
+import com.summer.task.HttpBaseTask;
+import com.summer.treadpool.ThreadPoolConst;
+import com.summer.utils.JsonUtil;
+import com.summer.utils.MD5;
+import com.summer.utils.StringUtil;
+import com.summer.utils.ToastUtil;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 
 @SuppressLint("WorldReadableFiles") 
-public class LoginActivity extends Activity {
+public class LoginActivity extends BaseActivity {
 	
 	protected static final String TAG = "login";
 	private EditText userName, password;
-	private CheckBox remberPasswordCkBox, autoLoginCkbox;
+	private CheckBox remberPasswordCkBox;
 	private Button btnLogin;
 	private ImageButton btnQuit;
-	private SharedPreferences sp;
     private String userNameValue,passwordValue;
-	private ProgressDialog mProgressDialog;
-	private DataUtil dataUtil;
+	private InfoReceiver infoReceiver;
 	
-    Handler mHandler = new Handler(){
-        public void handleMessage(Message msg) {
-        	cancelProgressBar();
-            switch (msg.what) {
-            case 0:
-            	//登录失败，用户名或者账号错误
-	    		Toast.makeText(LoginActivity.this,"登录失败，用户名或者密码错误，请重新登录！", Toast.LENGTH_SHORT).show();
-            	break;
-            case 1:
-            	//登录成功
-            	dataUtil.HasInstalled();
-            	Toast.makeText(LoginActivity.this,"登录成功", Toast.LENGTH_SHORT).show();
-            	//跳转到其他页面
-            	Intent intent = new Intent(LoginActivity.this,MainActivity.class);
-            	LoginActivity.this.startActivity(intent);
-            	break;
-            }
-            super.handleMessage(msg);   
-       }   
-    };
+	private Gson gson;
 	
-	@SuppressWarnings("deprecation")
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.sinotik_login);
-		dataUtil = new DataUtil(this);
-        //获得实例对象
-		sp = this.getSharedPreferences("userInfo", Context.MODE_WORLD_READABLE);
 		
+		Config.setFileDir(getApplicationInfo().dataDir);
 		userName = (EditText) findViewById(R.id.et_zh);
 		password = (EditText) findViewById(R.id.et_mima);
 		remberPasswordCkBox = (CheckBox) findViewById(R.id.cb_mima);
-		autoLoginCkbox = (CheckBox) findViewById(R.id.cb_auto);
 		btnLogin = (Button) findViewById(R.id.btn_login);
 		btnQuit = (ImageButton)findViewById(R.id.img_btn);
+		gson = new Gson();
+		Config.LoadConfig();
 		
-		//判断记住密码多选框的状态
-		if(dataUtil.IsRememberPassword())
+		if (Config.getUsername() != null && !Config.getUsername().isEmpty())
 		{
+			userName.setText(Config.getUsername());
+		}
+		if (Config.getPassword() != null && !Config.getPassword().isEmpty())
+		{
+			password.setText(Config.getPassword());
 			//设置默认是记录密码状态
 			remberPasswordCkBox.setChecked(true);
-			userName.setText(dataUtil.GetUserNameSelf());
-			password.setText(dataUtil.GetPasswordSelf());
-			//判断自动登陆多选框状态
-			if(sp.getBoolean("AUTO_ISCHECK", false))
-			{
-				//设置默认是自动登录状态
-				autoLoginCkbox.setChecked(true);
-				//1.检查用户名和密码
-				//2.跳转界面
-//				Intent intent = new Intent(LoginActivity.this,LogoActivity.class);
-//				LoginActivity.this.startActivity(intent);
-			}
-		}
-		
-		
+		}	
 		
 		btnLogin.setOnClickListener(new OnClickListener() {
 			
 			public void onClick(View v) {
 				userNameValue = userName.getText().toString();
 			    passwordValue = password.getText().toString();
-			    dataUtil.StoreUserSelf(userNameValue, passwordValue);
 			    //检查网络状态
 			    if(!NetworkUtil.isNetworkAvailable(getApplicationContext()))
 			    {
@@ -111,37 +91,8 @@ public class LoginActivity extends Activity {
 			    }
 			    else
 			    {
-				    startLogin();
+				    sendLoginRequest();
 			    }
-			}
-		});
-		
-	    //监听记住密码多选框按钮事件
-		remberPasswordCkBox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-			public void onCheckedChanged(CompoundButton buttonView,boolean isChecked) {
-				if (remberPasswordCkBox.isChecked()) {
-                    
-					dataUtil.RememberPassword(true);
-					
-				}else {
-					dataUtil.RememberPassword(false);
-					
-				}
-
-			}
-		});
-		
-		//监听自动登录多选框事件
-		autoLoginCkbox.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView,boolean isChecked) {
-				if (autoLoginCkbox.isChecked()) {
-					System.out.println("自动登录已选中");
-					sp.edit().putBoolean("AUTO_ISCHECK", true).commit();
-
-				} else {
-					System.out.println("自动登录没有选中");
-					sp.edit().putBoolean("AUTO_ISCHECK", false).commit();
-				}
 			}
 		});
 		
@@ -152,6 +103,48 @@ public class LoginActivity extends Activity {
 				finish();
 			}
 		});
+		
+		infoReceiver = new InfoReceiver() {
+			
+			@Override
+			public void onNotifyText(String notify) {
+				
+			}
+			
+			@Override
+			public void onInfoReceived(int errorCode, HashMap<String, Object> items) {
+				RemoveProgressDialog();
+		        if (errorCode == 0)
+		        {
+		            XLog.i(errorCode);
+		            XLog.i("items : " + items.toString());
+		            String jsonString = (String) items.get("content");
+		            if (jsonString != null)
+		            {
+		                JSONObject object;
+		                try {
+		                    object = new JSONObject(jsonString);
+		                    String msg = object.optString("message");
+		                    int code = object.optInt("code", -1);
+		                    int taskType = (Integer) items.get("taskType");
+		                    if (code == 200)
+		                    {
+		                        RequestSuccessful(jsonString, taskType);
+		                    }
+		                    else
+		                    {
+		                        RequestFailed(code, msg, taskType);
+		                    }
+		                } catch (JSONException e) {
+		                    //parse error
+		                    XLog.e(e);
+		                    e.printStackTrace();
+		                    RequestFailed(-1, "Json Parse Error", -1);
+		                }
+		            }
+		        }
+			}
+		};
 	}
 	
     private void checkNetworkDialog()
@@ -176,14 +169,6 @@ public class LoginActivity extends Activity {
     	builder.create().show();
     }
 	
-	private void startLogin()
-	{
-		showProgressBar();
-		String url = dataUtil.GetFormatLoginString(userNameValue, passwordValue);
-		Log.i(TAG,"------------login uri---------" + url);
-		dataUtil.PostJsonData(mHandler,url);
-	}
-	
 	@Override
 	protected void onResume()
 	{
@@ -194,19 +179,70 @@ public class LoginActivity extends Activity {
 		}
 		
 	}
-	
-	//显示进度条
-    private void showProgressBar()
+
+    private void sendLoginRequest()
     {
-    	mProgressDialog = new ProgressDialog(this,"正在登录，请稍等......");
-    	mProgressDialog.setCanceledOnTouchOutside(false);
-    	mProgressDialog.show();
+    	userNameValue = userName.getText().toString().trim();
+    	passwordValue = password.getText().toString().trim();
+    	if (StringUtil.empty(userNameValue)) 
+    	{
+    		ToastUtil.show(this, "用户名不能空");
+    		return;
+    	}
+    	if (StringUtil.empty(passwordValue)) 
+    	{
+    		ToastUtil.show(this, "密码不能空");
+    		return;
+    	}
+    	HashMap<String, String> entity = new HashMap<String, String>();
+    	entity.put("username", userNameValue);
+    	entity.put("password", MD5.getInstance().getMd5(passwordValue));
+    	List<NameValuePair> params = JsonUtil.requestForNameValuePair(entity);
+    	ShowProgressDialog("正在登录，请稍等...");
+    	addToThreadPool(Config.LOGIN_TYPE, "send login request", params);
     }
     
-    //取消显示进度条
-    private void cancelProgressBar()
+    private void addToThreadPool(int taskType, String Tag, List<NameValuePair> params)
     {
-    	mProgressDialog.dismiss();
+    	HttpBaseTask httpTask = new HttpBaseTask(ThreadPoolConst.THREAD_TYPE_FILE_HTTP, Tag, params, UrlUtil.GetUrl(taskType));
+    	httpTask.setTaskType(taskType);
+    	InfoHandler handler = new InfoHandler(infoReceiver);
+    	httpTask.setInfoHandler(handler);
+    	ThreadPoolFactory.getThreadPoolManager().addTask(httpTask);
     }
+    
+	@Override
+	public void RequestSuccessful(String jsonString, int taskType) {
+		switch(taskType)
+		{
+		case Config.LOGIN_TYPE:
+			XLog.i("jsonString: " + jsonString);
+			Entity<List<User>> entity = gson.fromJson(jsonString,
+					new TypeToken<Entity<List<User>>>() {
+					}.getType());
+			
+			if (entity != null && entity.getData() != null)
+			{
+				Config.user = entity.getData().get(0);
+            	Toast.makeText(LoginActivity.this,"登录成功", Toast.LENGTH_SHORT).show();
+            	if (remberPasswordCkBox.isChecked())
+            	{
+                	Config.setUsername(userNameValue);
+                	Config.setPassword(passwordValue);
+                	Config.saveConfig();
+            	}
+            	else
+            	{
+            		Config.clearPassword();
+            	}
+
+            	//跳转到其他页面
+            	Intent intent = new Intent(LoginActivity.this,MainActivity.class);
+            	startActivity(intent);
+			}
+			break;
+			
+		}
+	}
 
 }
